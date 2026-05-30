@@ -1,0 +1,40 @@
+# Python/runtime cache
+__pycache__/
+*.py[cod]
+
+# Local assistant/tool settings
+.claude/
+.gitdata/
+.ssh_github/
+
+# Local environment and logs
+.env
+*.log
+_check.js
+push_stdout.txt
+push_stderr.txt
+
+# Generated temporary task data
+downloads/*
+!downloads/projects/
+!downloads/projects/**/
+!downloads/projects/**/*.md
+!downloads/projects/**/*.json
+!downloads/projects/**/*.srt
+!downloads/projects/**/*.ass
+
+# Large local media should stay on disk, not in GitHub
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.webm
+*.m4v
+*.mp3
+*.m4a
+*.wav
+*.aac
+*.flac
+
+# Keep generated project documents/subtitles allowed by default.
+# Future project folders can still upload .md, .json, .srt, .ass files.
