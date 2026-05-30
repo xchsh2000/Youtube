@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YouTube Downloader</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0f0f0f;--surface:#1a1a2e;--surface2:#25253e;--border:#333;
+  --text:#e4e4e4;--text2:#999;--accent:#ff4757;--accent2:#ff6b81;
+  --green:#2ed573;--blue:#1e90ff;--yellow:#ffa502;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.container{max-width:960px;margin:0 auto;padding:40px 20px}
+
+.header{text-align:center;margin-bottom:40px}
+.header h1{font-size:28px;font-weight:700;margin-bottom:6px}
+.header h1 span{color:var(--accent)}
+.header p{color:var(--text2);font-size:14px}
+
+.card{background:var(--surface);border-radius:16px;padding:24px;margin-bottom:20px;border:1px solid var(--border)}
+.card-title{font-size:13px;font-weight:600;color:var(--text2);margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px}
+
+.url-row{display:flex;gap:10px;margin-bottom:16px}
+.url-row input{flex:1;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;outline:none;transition:border .2s}
+.url-row input:focus{border-color:var(--accent)}
+.btn{padding:10px 20px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-secondary:disabled{opacity:.5;cursor:not-allowed}
+
+/* Options */
+.opt-row{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.opt-group{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2)}
+.opt-group label{white-space:nowrap}
+.opt-group select{padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none}
+.opt-group select:focus{border-color:var(--accent)}
+.toggle{position:relative;width:40px;height:22px;display:inline-block}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .slider{position:absolute;inset:0;background:var(--border);border-radius:22px;cursor:pointer;transition:.3s}
+.toggle .slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.toggle input:checked+.slider{background:var(--accent)}
+.toggle input:checked+.slider:before{transform:translateX(18px)}
+
+/* Subtitle panel */
+.sub-panel{margin-top:16px;padding-top:16px;border-top:1px solid var(--border);display:none}
+.sub-panel.active{display:block}
+.sub-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px}
+.sub-grid .full{grid-column:1/-1}
+.sub-preview-wrap{margin-bottom:14px}
+.sub-preview{position:relative;width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);border-radius:12px;overflow:hidden;cursor:default;user-select:none}
+.sub-preview-bg{position:absolute;inset:0;background-size:cover;background-position:center;filter:brightness(.6)}
+.sub-preview-text{position:absolute;left:50%;transform:translateX(-50%);text-align:center;pointer-events:auto;cursor:ns-resize;padding:4px 12px;white-space:nowrap;transition:top .15s}
+.sub-preview-text.dragging{transition:none}
+.sub-preview-text .line1,.sub-preview-text .line2{display:block}
+.sub-pos-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;width:72px;margin-left:auto}
+.sub-pos-btn{width:22px;height:22px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;padding:0}
+.sub-pos-btn:hover{border-color:var(--accent);color:var(--accent)}
+.sub-pos-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.sub-settings-row{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.sub-settings-row .sub-grid{flex:1;min-width:280px}
+.sub-settings-row .sub-side{display:flex;flex-direction:column;gap:10px;align-items:center;min-width:100px}
+.color-row{display:flex;align-items:center;gap:8px}
+.color-row input[type="color"]{width:32px;height:32px;border:1px solid var(--border);border-radius:8px;background:none;cursor:pointer;padding:2px}
+.color-row input[type="color"]::-webkit-color-swatch{border-radius:5px;border:none}
+.color-row input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
+.hint{font-size:11px;color:var(--text2);margin-top:10px;line-height:1.5}
+.sub-preview-bg-box{position:absolute;z-index:-1;pointer-events:none;border-radius:4px}
+.bg-section{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.bg-section .bg-title{font-size:12px;font-weight:600;color:var(--text2)}
+.bg-row{display:flex;align-items:center;gap:6px;margin-bottom:8px;font-size:12px;color:var(--text2)}
+.bg-row label{min-width:48px;white-space:nowrap;flex-shrink:0}
+.bg-row input[type="range"]{flex:1;min-width:0;height:4px;-webkit-appearance:none;appearance:none;background:var(--border);border-radius:2px;outline:none}
+.bg-row input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);cursor:pointer}
+.bg-row .bg-val{min-width:36px;text-align:right;font-size:11px}
+.bg-row .bg-num{width:38px;padding:2px 3px;font-size:11px;border:1px solid var(--border);border-radius:4px;background:var(--bg);color:var(--text);text-align:center;outline:none;-moz-appearance:textfield;flex-shrink:0}
+.bg-row .bg-num::-webkit-inner-spin-button,.bg-row .bg-num::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+#subSize::-webkit-inner-spin-button,#subSize::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.bg-row .bg-num:focus{border-color:var(--accent)}
+.bg-row .bg-pct{font-size:11px;color:var(--text2);flex-shrink:0}
+.bg-row input[type="color"]{width:28px;height:28px;border:1px solid var(--border);border-radius:6px;background:none;cursor:pointer;padding:2px;flex-shrink:0}
+.bg-row input[type="color"]::-webkit-color-swatch{border-radius:4px;border:none}
+.bg-row input[type="color"]::-webkit-color-swatch-wrapper{padding:0}
+
+.local-sub-grid{display:grid;grid-template-columns:minmax(220px,1fr) repeat(3,120px) auto;gap:10px;align-items:center}
+.local-file input{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px}
+.local-sub-grid select{padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none}
+.local-sub-prompt{width:100%;min-height:72px;margin-top:12px;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;line-height:1.45;resize:vertical;outline:none}
+.local-sub-prompt:focus,.local-sub-grid select:focus,.local-file input:focus{border-color:var(--accent)}
+.local-sub-status{margin-top:12px}
+.local-sub-status .progress-msg{margin-top:8px;text-align:left}
+#localSubDownload{display:inline-block;margin-top:8px}
+.local-workbench-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.local-workbench-actions select{padding:8px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none}
+.local-preview{margin-top:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:360px;overflow-y:auto;background:var(--bg)}
+.local-preview-row{display:grid;grid-template-columns:56px 150px minmax(0,1fr) minmax(0,1fr);gap:10px;padding:9px 10px;border-top:1px solid var(--border);font-size:12px;align-items:start}
+.local-preview-row:first-child{border-top:0}
+.local-preview-row .idx{color:var(--text2);font-variant-numeric:tabular-nums}
+.local-preview-row .time{color:var(--blue);font-variant-numeric:tabular-nums}
+.local-preview-row .src{color:var(--text);line-height:1.45;word-break:break-word}
+.local-preview-row .zh{color:var(--green);line-height:1.45;word-break:break-word}
+.local-suggestions{margin-top:12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);padding:10px;max-height:220px;overflow:auto}
+.local-sugg{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;padding:7px 0;border-top:1px solid var(--border);font-size:12px}
+.local-sugg:first-child{border-top:0}
+.local-sugg b{color:var(--accent);font-weight:600}
+.local-sugg .reason{display:block;color:var(--text2);margin-top:3px}
+@media(max-width:820px){.local-sub-grid{grid-template-columns:1fr 1fr}.local-file{grid-column:1/-1}.local-sub-grid .btn{grid-column:1/-1}}
+@media(max-width:760px){.local-preview-row{grid-template-columns:42px 1fr}.local-preview-row .src,.local-preview-row .zh{grid-column:1/-1}}
+
+/* Format panel */
+.format-panel{display:none}
+.format-panel.active{display:block}
+.format-title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.format-title-row .video-title{font-size:15px;font-weight:600;color:var(--text);max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.format-title-row .duration{font-size:12px;color:var(--text2)}
+.fmt-tabs{display:flex;gap:0;margin-bottom:14px;border-bottom:1px solid var(--border)}
+.fmt-tab{padding:8px 16px;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s}
+.fmt-tab:hover{color:var(--text)}
+.fmt-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.fmt-table-wrap{max-height:320px;overflow-y:auto;border-radius:10px;border:1px solid var(--border)}
+.fmt-table{width:100%;border-collapse:collapse;font-size:12px}
+.fmt-table th{position:sticky;top:0;background:var(--surface2);color:var(--text2);padding:8px 10px;text-align:left;font-weight:600;white-space:nowrap;z-index:1}
+.fmt-table td{padding:7px 10px;border-top:1px solid var(--border);white-space:nowrap}
+.fmt-table tr:hover td{background:var(--surface2)}
+.fmt-table tr.selected td{background:rgba(255,71,87,.15)}
+.fmt-table input[type="radio"]{accent-color:var(--accent);cursor:pointer}
+.vbr-bar{display:inline-block;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--green),var(--yellow),var(--accent));min-width:4px;vertical-align:middle}
+.vbr-val{font-weight:600;color:var(--text);margin-left:4px}
+.codec-tag{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600}
+.codec-tag.h264{background:#2196f320;color:#64b5f6}
+.codec-tag.vp9{background:#4caf5020;color:#81c784}
+.codec-tag.av1{background:#ff980020;color:#ffb74d}
+.codec-tag.aac{background:#9c27b020;color:#ce93d8}
+.codec-tag.opus{background:#00bcd420;color:#4dd0e1}
+.codec-tag.other{background:var(--border);color:var(--text2)}
+.fmt-actions{display:flex;gap:8px;margin-top:14px;align-items:center}
+.fmt-actions .info{font-size:12px;color:var(--text2);margin-left:auto}
+.loading-overlay{text-align:center;padding:40px;color:var(--text2)}
+.loading-overlay .spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin-bottom:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Progress */
+.progress-box{border-radius:16px;padding:20px 24px;margin-bottom:20px;border:1px solid var(--border);display:none;background:var(--surface)}
+.progress-box.active{display:block}
+.progress-bar-bg{background:var(--bg);border-radius:8px;height:8px;overflow:hidden;margin:12px 0}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:8px;transition:width .3s;width:0%}
+.progress-msg{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.progress-pct{text-align:center;font-size:13px;color:var(--text2)}
+
+/* Files */
+.files-section h2{font-size:18px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.files-section h2 .count{background:var(--accent);color:#fff;font-size:11px;padding:2px 8px;border-radius:10px}
+.file-list{display:flex;flex-direction:column;gap:8px}
+.file-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;transition:border .2s}
+.file-item:hover{border-color:var(--accent)}
+.file-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.file-icon.video{background:#ff475720;color:var(--accent)}
+.file-icon.audio{background:#2ed57320;color:var(--green)}
+.file-icon.sub{background:#ffa50220;color:var(--yellow)}
+.file-icon.image{background:#1e90ff20;color:var(--blue)}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-meta{font-size:12px;color:var(--text2);margin-top:2px}
+.file-actions{display:flex;gap:6px;flex-shrink:0}
+.btn-sm{padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;transition:all .2s}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm.danger:hover{border-color:#ff4757;color:#ff4757}
+.empty{text-align:center;padding:40px;color:var(--text2);font-size:14px}
+
+.toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--surface2);color:var(--text);padding:12px 24px;border-radius:10px;font-size:13px;border:1px solid var(--border);opacity:0;transition:all .3s;z-index:99;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:600px){
+  .url-row{flex-direction:column}
+  .opt-row{flex-direction:column;align-items:flex-start}
+  .sub-grid{grid-template-columns:1fr}
+  .sub-settings-row{flex-direction:column}
+  .sub-settings-row .sub-side{flex-direction:row;width:100%;justify-content:center}
+  .fmt-table{font-size:11px}
+  .fmt-table th,.fmt-table td{padding:5px 6px}
+  #aiDescCard .opt-row{flex-direction:column}
+  #aiDescCard [style*="grid-template-columns"]{grid-template-columns:1fr !important}
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1><span>YouTube</span> Downloader</h1>
+    <p>粘贴链接，查看格式，选择码率，一键下载</p>
+  </div>
+
+  <!-- URL -->
+  <div class="card">
+    <div class="url-row">
+      <input type="text" id="urlInput" placeholder="粘贴 YouTube 视频链接..." autocomplete="off">
+      <button class="btn btn-secondary" id="fmtBtn" onclick="queryFormats()">查看格式</button>
+      <button class="btn btn-secondary" id="thumbBtn" onclick="downloadThumbnail()">封面</button>
+      <button class="btn btn-primary" id="dlBtn" onclick="startDownload()">下载</button>
+    </div>
+
+    <div class="opt-row">
+      <div class="opt-group">
+        <label>类型</label>
+        <select id="typeSelect" onchange="toggleType()">
+          <option value="video">视频 (MP4)</option>
+          <option value="audio">音频 (MP3)</option>
+        </select>
+      </div>
+      <div class="opt-group video-opt" id="qualityGroup">
+        <label>画质</label>
+        <select id="qualitySelect">
+          <option value="best">最高</option>
+          <option value="2160">4K</option>
+          <option value="1080" selected>1080p</option>
+          <option value="720">720p</option>
+          <option value="480">480p</option>
+        </select>
+      </div>
+      <div class="opt-group video-opt" id="codecGroup">
+        <label>编码</label>
+        <select id="codecSelect">
+          <option value="best">自动（最高码率）</option>
+          <option value="h264">H.264 (兼容性好)</option>
+          <option value="vp9">VP9</option>
+          <option value="av1">AV1</option>
+        </select>
+      </div>
+      <div class="opt-group" id="audioGroup" style="display:none">
+        <label>格式</label>
+        <select id="audioFormat">
+          <option value="mp3">MP3</option>
+          <option value="m4a">M4A</option>
+          <option value="opus">OPUS</option>
+        </select>
+      </div>
+      <div class="opt-group video-opt" id="aeGroup">
+        <label>AE 兼容</label>
+        <label class="toggle"><input type="checkbox" id="aeCompat"><span class="slider"></span></label>
+        <span style="font-size:11px;color:var(--text2)">转为 H.264</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Format Selection Panel -->
+  <div class="card format-panel" id="formatPanel">
+    <div class="format-title-row">
+      <span class="video-title" id="fmtVideoTitle"></span>
+      <span class="duration" id="fmtDuration"></span>
+    </div>
+    <div id="fmtLoading" class="loading-overlay">
+      <div class="spinner"></div><br>正在查询可用格式...
+    </div>
+    <div id="fmtContent" style="display:none">
+      <div class="fmt-tabs">
+        <div class="fmt-tab active" data-tab="video" onclick="switchFmtTab('video')">仅视频</div>
+        <div class="fmt-tab" data-tab="audio" onclick="switchFmtTab('audio')">仅音频</div>
+        <div class="fmt-tab" data-tab="combined" onclick="switchFmtTab('combined')">视频+音频</div>
+      </div>
+      <div class="fmt-table-wrap" id="fmtTableWrap"></div>
+      <div class="fmt-actions">
+        <button class="btn btn-primary" onclick="downloadSelected()">下载选中格式</button>
+        <span class="info" id="fmtSelectionInfo">请先选择视频和音频格式</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dual Subtitle -->
+  <div class="card video-opt" id="subCard">
+    <div class="card-title">字幕</div>
+    <div class="opt-row">
+      <div class="opt-group">
+        <label>启用字幕</label>
+        <label class="toggle"><input type="checkbox" id="dualSubToggle" onchange="toggleSubPanel()"><span class="slider"></span></label>
+      </div>
+    </div>
+    <div class="sub-panel" id="subPanel">
+      <!-- Preview -->
+      <div class="sub-preview-wrap">
+        <div class="sub-preview" id="subPreview">
+          <div class="sub-preview-bg" id="subPreviewBg"></div>
+          <div class="sub-preview-text" id="subPreviewText" style="color:#fff;font-size:14px">
+            <div class="sub-preview-bg-box" id="subPreviewBgBox" style="display:none"></div>
+            <span class="line1" id="previewLine1" style="display:block">中文示例字幕</span>
+            <span class="line2 en-opt" id="previewLine2" style="display:block">English subtitle</span>
+          </div>
+        </div>
+      </div>
+      <!-- Settings + Layout -->
+      <div class="sub-settings-row">
+        <div class="sub-grid">
+          <div class="opt-group">
+            <label>字幕语言</label>
+            <select id="subMode" onchange="toggleSubLangOptions()">
+              <option value="zh_en" selected>中英双语</option>
+              <option value="zh">仅中文</option>
+            </select>
+          </div>
+          <div class="opt-group" id="subOrderGroup">
+            <label>排版顺序</label>
+            <select id="subOrder" onchange="updateSubPreview()">
+              <option value="zh_top">中文在上</option>
+              <option value="en_top">英文在上</option>
+            </select>
+          </div>
+          <div class="opt-group">
+            <label>字体</label>
+            <select id="subFont" onchange="updateSubPreview()"></select>
+          </div>
+          <div class="opt-group">
+            <label>字号</label>
+            <input type="number" id="subSize" value="52" min="16" max="200" step="1" onchange="updateSubPreview()" oninput="updateSubPreview()" list="subSizePresets" style="width:68px;padding:6px 8px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none;-moz-appearance:textfield" onfocus="this.select()"><datalist id="subSizePresets"><option value="28"><option value="36"><option value="44"><option value="52"><option value="60"><option value="72"><option value="84"><option value="96"></datalist>
+          </div>
+          <div class="opt-group"><div class="color-row"><label>字幕颜色</label><input type="color" id="subColor" value="#ffffff" oninput="updateSubPreview()"></div></div>
+          <div class="opt-group"><div class="color-row"><label>描边颜色</label><input type="color" id="outlineColor" value="#000000" oninput="updateSubPreview()"></div></div>
+          <div class="full bg-section">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+              <span class="bg-title">字幕背景</span>
+              <label class="toggle"><input type="checkbox" id="bgEnabled" onchange="updateSubPreview()"><span class="slider"></span></label>
+            </div>
+            <div class="bg-row">
+              <label>颜色</label>
+              <input type="color" id="bgColor" value="#000000" oninput="updateSubPreview()">
+              <input type="range" id="bgOpacity" min="0" max="100" value="50" oninput="syncFromSlider('bgOpacity');updateSubPreview()">
+              <input type="number" class="bg-num" id="bgOpacityNum" min="0" max="100" value="50" oninput="syncToSlider('bgOpacity');updateSubPreview()"><span class="bg-pct">%</span>
+            </div>
+            <div class="bg-row">
+              <label>圆角</label>
+              <input type="range" id="bgRadius" min="0" max="100" value="0" oninput="syncFromSlider('bgRadius');updateSubPreview()">
+              <input type="number" class="bg-num" id="bgRadiusNum" min="0" max="100" value="0" oninput="syncToSlider('bgRadius');updateSubPreview()"><span class="bg-pct">%</span>
+            </div>
+            <div class="bg-row">
+              <label>高度</label>
+              <input type="range" id="bgHeight" min="0" max="100" value="20" oninput="syncFromSlider('bgHeight');updateSubPreview()">
+              <input type="number" class="bg-num" id="bgHeightNum" min="0" max="100" value="20" oninput="syncToSlider('bgHeight');updateSubPreview()"><span class="bg-pct">%</span>
+            </div>
+            <div class="bg-row">
+              <label>宽度</label>
+              <input type="range" id="bgWidth" min="0" max="100" value="80" oninput="syncFromSlider('bgWidth');updateSubPreview()">
+              <input type="number" class="bg-num" id="bgWidthNum" min="0" max="100" value="80" oninput="syncToSlider('bgWidth');updateSubPreview()"><span class="bg-pct">%</span>
+            </div>
+            <div class="bg-row">
+              <label>上下偏移</label>
+              <input type="range" id="bgOffsetY" min="-100" max="100" value="0" oninput="syncFromSlider('bgOffsetY');updateSubPreview()">
+              <input type="number" class="bg-num" id="bgOffsetYNum" min="-100" max="100" value="0" oninput="syncToSlider('bgOffsetY');updateSubPreview()">
+            </div>
+            <div class="bg-row">
+              <label>左右偏移</label>
+              <input type="range" id="bgOffsetX" min="-100" max="100" value="0" oninput="syncFromSlider('bgOffsetX');updateSubPreview()">
+              <input type="number" class="bg-num" id="bgOffsetXNum" min="-100" max="100" value="0" oninput="syncToSlider('bgOffsetX');updateSubPreview()">
+            </div>
+            <div class="hint" style="margin-top:6px">烧录时会使用自动贴合的稳定背景，优先保证字幕和背景对齐。</div>
+          </div>
+          <div class="opt-group full">
+            <label>烧录字幕到视频</label>
+            <label class="toggle"><input type="checkbox" id="burnSub" checked><span class="slider"></span></label>
+            <span style="font-size:11px;color:var(--text2);margin-left:8px">下载后自动将字幕嵌入视频画面</span>
+          </div>
+          <div class="opt-group full">
+            <label>自动翻译中文</label>
+            <label class="toggle"><input type="checkbox" id="translateSub" onchange="toggleTranslateHint()"><span class="slider"></span></label>
+            <span style="font-size:11px;color:var(--text2);margin-left:8px" id="translateHint">无中文字幕时用 AI 翻译（需先配置 AI 设置）</span>
+          </div>
+        </div>
+        <div class="sub-side">
+          <div style="font-size:11px;color:var(--text2);text-align:center">排版</div>
+          <div class="sub-pos-grid" id="subPosGrid">
+            <button class="sub-pos-btn" data-pos="7" title="上左">&#8598;</button>
+            <button class="sub-pos-btn" data-pos="8" title="上中">&#8593;</button>
+            <button class="sub-pos-btn" data-pos="9" title="上右">&#8599;</button>
+            <button class="sub-pos-btn" data-pos="4" title="中左">&#8592;</button>
+            <button class="sub-pos-btn" data-pos="5" title="居中">&#9679;</button>
+            <button class="sub-pos-btn" data-pos="6" title="中右">&#8594;</button>
+            <button class="sub-pos-btn" data-pos="1" title="下左">&#8601;</button>
+            <button class="sub-pos-btn active" data-pos="2" title="下中">&#8595;</button>
+            <button class="sub-pos-btn" data-pos="3" title="下右">&#8600;</button>
+          </div>
+          <div style="font-size:10px;color:var(--text2);text-align:center;margin-top:4px" id="marginVLabel">边距: 30px</div>
+        </div>
+      </div>
+      <div class="hint">拖拽预览区字幕调整垂直位置，或使用排版按钮快速定位。开启「烧录字幕到视频」将自动把字幕嵌入视频画面。</div>
+    </div>
+  </div>
+
+  <!-- Local Subtitle Translation -->
+  <div class="card video-opt" id="localSubCard">
+    <div class="card-title">本地字幕工作台</div>
+    <div class="local-sub-grid">
+      <div class="local-file">
+        <input type="file" id="localVideoFile" accept="video/*,audio/*,.srt">
+      </div>
+      <select id="localSubLang" title="识别语言">
+        <option value="en" selected>英文识别</option>
+        <option value="auto">自动识别</option>
+        <option value="zh">中文识别</option>
+        <option value="ja">日文识别</option>
+        <option value="ko">韩文识别</option>
+      </select>
+      <select id="localSubDevice" title="识别设备">
+        <option value="cuda" selected>CUDA</option>
+        <option value="cpu">CPU</option>
+      </select>
+      <select id="localSubOutput" title="导出格式">
+        <option value="bilingual" selected>双语 SRT</option>
+        <option value="zh">仅中文 SRT</option>
+      </select>
+      <button class="btn btn-primary" id="localImportBtn" onclick="importLocalSubtitle()">读取/分析</button>
+    </div>
+    <textarea id="localSubPrompt" class="local-sub-prompt" placeholder="可选：填写视频背景、术语、人名或产品名，大模型会用它纠正识别错误并统一翻译"></textarea>
+    <div class="local-workbench-actions">
+      <button class="btn btn-secondary" onclick="mergeLocalShortSentences()">合并短句</button>
+      <button class="btn btn-secondary" onclick="checkLocalWords()">AI 检查单词</button>
+      <button class="btn btn-secondary" onclick="applyLocalCorrections()">应用校正</button>
+      <button class="btn btn-secondary" onclick="translateLocalSubtitle()">翻译</button>
+      <select id="localSubOrder" title="双语顺序">
+        <option value="en_top" selected>英文在上</option>
+        <option value="zh_top">中文在上</option>
+      </select>
+      <button class="btn btn-primary" onclick="exportLocalSubtitle()">导出字幕</button>
+      <button class="btn btn-secondary" id="localOneclickBtn" onclick="startLocalSubtitle()">一键生成</button>
+    </div>
+    <div class="local-sub-status" id="localSubStatus" style="display:none">
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="localSubFill"></div></div>
+      <div class="progress-msg" id="localSubMsg">准备中...</div>
+      <a class="btn-sm" id="localSubDownload" href="#" style="display:none">下载字幕</a>
+    </div>
+    <div class="local-suggestions" id="localSuggestions" style="display:none"></div>
+    <div class="local-preview" id="localPreview"><div class="empty">先选择本地视频、音频或 SRT 文件</div></div>
+    <div class="hint">当前按工作台流程分步处理：读取/识别 → 合并短句 → AI 检查识别词 → 翻译 → 调整中英文位置并导出。后续会接进一键下载、翻译检查、烧录和效果预览。</div>
+  </div>
+
+  <!-- AI Description -->
+  <div class="card" id="aiDescCard">
+    <div class="card-title">AI 视频简介</div>
+    <div class="opt-row" style="margin-bottom:14px;gap:10px">
+      <div class="opt-group" style="flex:1;min-width:200px">
+        <label>API 地址</label>
+        <input type="text" id="aiApiUrl" style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none;width:100%" placeholder="https://api.openai.com/v1">
+      </div>
+      <div class="opt-group" style="flex:1;min-width:160px">
+        <label>API Key</label>
+        <input type="password" id="aiApiKey" style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none;width:100%" placeholder="sk-...">
+      </div>
+      <div class="opt-group" style="min-width:140px">
+        <label>模型</label>
+        <input type="text" id="aiModel" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;outline:none;width:120px" placeholder="gpt-4o-mini">
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:600;color:var(--text2)">参考风格</span>
+          <input type="text" id="refUrl" style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;outline:none" placeholder="粘贴参考视频链接...">
+          <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px" onclick="fetchRefDesc()">获取</button>
+        </div>
+        <textarea id="refStyleText" rows="8" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;resize:vertical;outline:none;font-family:inherit" placeholder="点击「获取」拉取参考视频简介，或直接粘贴参考文本..."></textarea>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span style="font-size:13px;font-weight:600;color:var(--text2)">生成简介</span>
+          <input type="text" id="targetUrl" style="flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;outline:none" placeholder="目标视频链接（默认使用上方链接）">
+          <button class="btn btn-primary" style="padding:5px 12px;font-size:12px" id="genDescBtn" onclick="generateDesc()">生成</button>
+          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="includeTimeline" checked> 包含时间轴</label>
+          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;cursor:pointer"><input type="checkbox" id="bilibiliFmt"> B站格式</label>
+        </div>
+        <textarea id="generatedDesc" rows="8" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:12px;resize:vertical;outline:none;font-family:inherit" placeholder="AI 生成的简介将显示在这里..." readonly></textarea>
+        <div style="margin-top:6px;display:flex;justify-content:flex-end;gap:6px">
+          <button class="btn-sm" id="saveDescBtn" style="display:none" onclick="saveGeneratedDesc()">保存文件</button>
+          <button class="btn-sm" id="copyDescBtn" style="display:none" onclick="copyGeneratedDesc()">复制</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-box" id="progressBox">
+    <div class="progress-pct" id="progressPct">0%</div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+    <div class="progress-msg" id="progressMsg">准备中...</div>
+  </div>
+
+  <!-- Files -->
+  <div class="files-section">
+    <h2>已下载文件 <span class="count" id="fileCount">0</span> <button class="btn btn-secondary" style="margin-left:12px;padding:5px 14px;font-size:12px" onclick="clearAll()">清空全部</button></h2>
+    <div class="file-list" id="fileList"><div class="empty">暂无文件</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let fmtData = { video: [], audio: [], combined: [] };
+let selectedVideo = null;
+let selectedAudio = null;
+
+function toggleType(){
+  const isAudio = document.getElementById('typeSelect').value === 'audio';
+  document.querySelectorAll('.video-opt').forEach(el => el.style.display = isAudio ? 'none' : '');
+  document.getElementById('audioGroup').style.display = isAudio ? '' : 'none';
+}
+
+function toggleSubPanel(){
+  const panel = document.getElementById('subPanel');
+  panel.classList.toggle('active', document.getElementById('dualSubToggle').checked);
+  if(document.getElementById('dualSubToggle').checked){
+    requestAnimationFrame(() => updateSubPreview());
+  }
+}
+
+function toggleSubLangOptions(){
+  const isBilingual = document.getElementById('subMode').value === 'zh_en';
+  document.querySelectorAll('.en-opt').forEach(el => el.style.display = isBilingual ? '' : 'none');
+  document.getElementById('subOrderGroup').style.display = isBilingual ? '' : 'none';
+  updateSubPreview();
+}
+
+function toggleTranslateHint(){
+  const on = document.getElementById('translateSub').checked;
+  document.getElementById('translateHint').textContent = on
+    ? (document.getElementById('aiApiKey').value ? '将使用 AI 设置中的配置翻译字幕' : '请先在下方 AI 设置中配置 API')
+    : '无中文字幕时用 AI 翻译（需先配置 AI 设置）';
+}
+
+// ── Font loading ──────────────────────────────────────────────────
+async function loadFonts(){
+  try {
+    const res = await fetch('/api/fonts');
+    const data = await res.json();
+    if(!data.fonts) return;
+    const sel = document.getElementById('subFont');
+    const defaultFont = 'Microsoft YaHei';
+    data.fonts.forEach(f => {
+      const o = document.createElement('option'); o.value = f; o.textContent = f;
+      if(f === defaultFont) o.selected = true;
+      sel.appendChild(o);
+    });
+  } catch(e) { console.warn('Failed to load fonts', e); }
+}
+
+// ── Subtitle preview ──────────────────────────────────────────────
+let subPos = 2;
+let marginV = 30;
+
+function updateSubPreview(){
+  const font = document.getElementById('subFont').value;
+  const size = document.getElementById('subSize').value;
+  const color = document.getElementById('subColor').value;
+  const outlineColor = document.getElementById('outlineColor').value;
+  const subOrder = document.getElementById('subOrder').value;
+  const isBilingual = document.getElementById('subMode').value === 'zh_en';
+  const bgEnabled = document.getElementById('bgEnabled').checked;
+  const bgColor = document.getElementById('bgColor').value;
+  const bgOpacity = document.getElementById('bgOpacity').value;
+  const bgRadius = document.getElementById('bgRadius').value;
+  const bgHeight = document.getElementById('bgHeight').value;
+  const bgWidth = document.getElementById('bgWidth').value;
+  const bgOffsetY = document.getElementById('bgOffsetY').value;
+  const bgOffsetX = document.getElementById('bgOffsetX').value;
+
+  const preview = document.getElementById('subPreviewText');
+  const line1 = document.getElementById('previewLine1');
+  const line2 = document.getElementById('previewLine2');
+  const bgBox = document.getElementById('subPreviewBgBox');
+
+  const scale = preview.parentElement ? preview.parentElement.offsetHeight / 1080 : 0.15;
+  const pxSize = Math.round(size * Math.max(scale, 0.15));
+
+  if(subOrder === 'en_top'){
+    line1.textContent = 'English subtitle';
+    line2.textContent = '中文示例字幕';
+  } else {
+    line1.textContent = '中文示例字幕';
+    line2.textContent = 'English subtitle';
+  }
+  line1.style.fontFamily = `"${font}", sans-serif`;
+  line1.style.fontSize = pxSize + 'px';
+  line1.style.color = color;
+  line2.style.fontFamily = `"${font}", sans-serif`;
+  line2.style.fontSize = pxSize + 'px';
+  line2.style.color = color;
+  line2.style.display = isBilingual ? '' : 'none';
+  preview.style.textShadow = `2px 2px 3px ${outlineColor}, -1px -1px 2px ${outlineColor}, 1px -1px 2px ${outlineColor}, -1px 1px 2px ${outlineColor}`;
+
+  if(bgBox){
+    bgBox.style.display = bgEnabled ? '' : 'none';
+    if(bgEnabled){
+      const r = parseInt(bgColor.substr(1,2),16);
+      const g = parseInt(bgColor.substr(3,2),16);
+      const b = parseInt(bgColor.substr(5,2),16);
+      bgBox.style.background = `rgba(${r},${g},${b},${bgOpacity/100})`;
+      // Measure text widths to match backend _estimate_text_width formula
+      const c = document.createElement('canvas');
+      const cx = c.getContext('2d');
+      cx.font = `${pxSize}px "${font}", sans-serif`;
+      const lw1 = cx.measureText(line1.textContent).width;
+      const lw2 = isBilingual ? cx.measureText(line2.textContent).width : 0;
+      const maxW = Math.max(lw1, lw2);
+      const nLines = isBilingual ? 2 : 1;
+      const lineH = pxSize * 1.2;
+      const totalH = nLines * lineH;
+
+      // Match backend: padx = max(max_w * bg_width_pct/200, size*0.3) + outline_val
+      const padx = Math.max(maxW * bgWidth / 200, pxSize * 0.3) + 2.5;
+      const pady = Math.max(totalH * bgHeight / 200, pxSize * 0.2) + 2.5;
+
+      // Match backend: ox = bg_offset_x * size / 50
+      const offX = bgOffsetX * pxSize / 50;
+      const offY = bgOffsetY * pxSize / 50;
+
+      const bgW = maxW + 2 * padx;
+      const bgH = totalH + 2 * pady;
+      const bgShort = Math.min(bgW, bgH);
+      bgBox.style.borderRadius = (bgRadius / 100 * bgShort / 2) + 'px';
+
+      bgBox.style.top = (-pady + offY) + 'px';
+      bgBox.style.bottom = (-pady - offY) + 'px';
+      bgBox.style.left = (-padx + offX) + 'px';
+      bgBox.style.right = (-padx - offX) + 'px';
+    }
+  }
+  applySubPosition();
+}
+
+function syncFromSlider(id){
+  var s = document.getElementById(id);
+  var n = document.getElementById(id + 'Num');
+  if(s && n) n.value = s.value;
+}
+function syncToSlider(id){
+  var s = document.getElementById(id);
+  var n = document.getElementById(id + 'Num');
+  if(s && n){
+    var v = parseInt(n.value);
+    if(!isNaN(v)){
+      v = Math.max(parseInt(s.min), Math.min(parseInt(s.max), v));
+      s.value = v;
+      n.value = v;
+    }
+  }
+}
+
+function applySubPosition(){
+  const preview = document.getElementById('subPreview');
+  const text = document.getElementById('subPreviewText');
+  if(!preview || !text) return;
+  const h = preview.offsetHeight;
+  const textH = text.offsetHeight;
+  const marginVPct = marginV / 1080;
+
+  let top;
+  if(subPos >= 7) top = marginVPct * h;                          // top row
+  else if(subPos >= 4) top = (h - textH) / 2;                    // middle row
+  else top = h - textH - marginVPct * h;                          // bottom row
+
+  let left;
+  if(subPos % 3 === 1) { left = '30px'; text.style.transform = 'none'; }
+  else if(subPos % 3 === 0) { left = ''; text.style.transform = 'none'; text.style.right = '30px'; text.style.left = 'auto'; }
+  else { left = '50%'; text.style.transform = 'translateX(-50%)'; text.style.right = 'auto'; }
+
+  if(subPos % 3 !== 0) { text.style.left = left; text.style.right = 'auto'; }
+  text.style.top = top + 'px';
+}
+
+// Layout buttons
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.sub-pos-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.sub-pos-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      subPos = parseInt(btn.dataset.pos);
+      updateSubPreview();
+    });
+  });
+});
+
+// Drag
+(function(){
+  let dragging = false, startY = 0, startTop = 0;
+  document.addEventListener('DOMContentLoaded', () => {
+    const text = document.getElementById('subPreviewText');
+    const preview = document.getElementById('subPreview');
+    if(!text || !preview) return;
+
+    function onDown(e){
+      dragging = true;
+      text.classList.add('dragging');
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      startY = clientY;
+      startTop = text.offsetTop;
+      e.preventDefault();
+    }
+    function onMove(e){
+      if(!dragging) return;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const delta = clientY - startY;
+      const previewH = preview.offsetHeight;
+      const textH = text.offsetHeight;
+      let newTop = startTop + delta;
+      newTop = Math.max(0, Math.min(newTop, previewH - textH));
+      text.style.top = newTop + 'px';
+
+      // Update marginV based on position
+      const pct = newTop / previewH;
+      if(pct < 0.33){ marginV = Math.round((1 - pct / 0.33) * 60); }
+      else if(pct > 0.66){ marginV = Math.round(((pct - 0.66) / 0.34) * 200 + 30); }
+      else { marginV = 30; }
+      document.getElementById('marginVLabel').textContent = '边距: ' + marginV + 'px';
+    }
+    function onUp(){
+      if(!dragging) return;
+      dragging = false;
+      text.classList.remove('dragging');
+    }
+
+    text.addEventListener('mousedown', onDown);
+    text.addEventListener('touchstart', onDown, {passive: false});
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('touchmove', onMove, {passive: false});
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchend', onUp);
+  });
+})();
+
+['outline'].forEach(p => {
+  const el = document.getElementById(p === 'outline' ? 'outlineColor' : p+'Color');
+  if(el) el.addEventListener('input', () => { updateSubPreview(); });
+});
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── Format Query ─────────────────────────────────────────────────
+async function queryFormats(){
+  const url = document.getElementById('urlInput').value.trim();
+  if(!url){ showToast('请输入视频链接'); return; }
+
+  const panel = document.getElementById('formatPanel');
+  const loading = document.getElementById('fmtLoading');
+  const content = document.getElementById('fmtContent');
+  panel.classList.add('active');
+  loading.style.display = '';
+  content.style.display = 'none';
+  document.getElementById('fmtBtn').disabled = true;
+
+  try {
+    const res = await fetch('/api/formats', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if(data.error){ showToast(data.error); return; }
+
+    fmtData = { video: data.video || [], audio: data.audio || [], combined: data.combined || [] };
+    selectedVideo = null; selectedAudio = null;
+
+    document.getElementById('fmtVideoTitle').textContent = data.title || '';
+    const dur = data.duration || 0;
+    const mm = Math.floor(dur/60), ss = Math.floor(dur%60);
+    document.getElementById('fmtDuration').textContent = mm > 0 ? `${mm}分${ss}秒` : '';
+
+    loading.style.display = 'none';
+    content.style.display = '';
+    switchFmtTab('video');
+  } catch(e) {
+    showToast('查询失败: ' + e.message);
+  } finally {
+    document.getElementById('fmtBtn').disabled = false;
+  }
+}
+
+function switchFmtTab(tab){
+  document.querySelectorAll('.fmt-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  renderFmtTable(tab);
+}
+
+function codecClass(codec){
+  if(!codec || codec === 'none') return '';
+  const c = codec.toLowerCase();
+  if(c.includes('avc') || c.includes('h264')) return 'h264';
+  if(c.includes('vp9') || c.includes('vp09')) return 'vp9';
+  if(c.includes('av01') || c.includes('av1')) return 'av1';
+  if(c.includes('aac') || c.includes('mp4a')) return 'aac';
+  if(c.includes('opus')) return 'opus';
+  return 'other';
+}
+
+function codecLabel(codec){
+  if(!codec || codec === 'none') return '-';
+  const c = codec.toLowerCase();
+  if(c.includes('avc') || c.includes('h264')) return 'H.264';
+  if(c.includes('vp9') || c.includes('vp09')) return 'VP9';
+  if(c.includes('av01') || c.includes('av1')) return 'AV1';
+  if(c.includes('aac') || c.includes('mp4a')) return 'AAC';
+  if(c.includes('opus')) return 'Opus';
+  return codec.split('.')[0].substring(0,8);
+}
+
+function maxVbr(list){
+  let m = 0;
+  list.forEach(f => { const v = f.vbr || f.tbr || 0; if(v > m) m = v; });
+  return m || 1;
+}
+
+function maxAbr(list){
+  let m = 0;
+  list.forEach(f => { const v = f.abr || 0; if(v > m) m = v; });
+  return m || 1;
+}
+
+function renderFmtTable(tab){
+  const wrap = document.getElementById('fmtTableWrap');
+  const list = fmtData[tab] || [];
+  if(!list.length){ wrap.innerHTML = '<div class="empty">无可用格式</div>'; return; }
+
+  const peakVbr = maxVbr(list);
+  const peakAbr = maxAbr(list);
+
+  let html = '<table class="fmt-table">';
+
+  if(tab === 'video'){
+    html += '<tr><th></th><th>ID</th><th>分辨率</th><th>编码</th><th>码率</th><th>FPS</th><th>格式</th></tr>';
+    list.forEach((f, i) => {
+      const sel = selectedVideo === f.id ? 'selected' : '';
+      const br = f.vbr || 0;
+      const barW = Math.round(br / peakVbr * 80);
+      const cls = codecClass(f.vcodec);
+      html += `<tr class="${sel}" onclick="selectFmt('video','${f.id}',this)">
+        <td><input type="radio" name="vfmt" value="${f.id}" ${sel?'checked':''}></td>
+        <td>${f.id}</td>
+        <td>${f.res}</td>
+        <td><span class="codec-tag ${cls}">${codecLabel(f.vcodec)}</span></td>
+        <td><span class="vbr-bar" style="width:${barW}px"></span><span class="vbr-val">${br}k</span></td>
+        <td>${f.fps || '-'}</td>
+        <td>${f.ext}</td>
+      </tr>`;
+    });
+  } else if(tab === 'audio'){
+    html += '<tr><th></th><th>ID</th><th>编码</th><th>码率</th><th>采样率</th><th>格式</th></tr>';
+    list.forEach((f, i) => {
+      const sel = selectedAudio === f.id ? 'selected' : '';
+      const br = f.abr || 0;
+      const barW = Math.round(br / peakAbr * 80);
+      const cls = codecClass(f.acodec);
+      html += `<tr class="${sel}" onclick="selectFmt('audio','${f.id}',this)">
+        <td><input type="radio" name="afmt" value="${f.id}" ${sel?'checked':''}></td>
+        <td>${f.id}</td>
+        <td><span class="codec-tag ${cls}">${codecLabel(f.acodec)}</span></td>
+        <td><span class="vbr-bar" style="width:${barW}px"></span><span class="vbr-val">${br}k</span></td>
+        <td>${f.asr || '-'}</td>
+        <td>${f.ext}</td>
+      </tr>`;
+    });
+  } else {
+    html += '<tr><th></th><th>ID</th><th>分辨率</th><th>视频</th><th>音频</th><th>总码率</th><th>格式</th></tr>';
+    list.forEach(f => {
+      const cls_v = codecClass(f.vcodec);
+      const cls_a = codecClass(f.acodec);
+      const br = f.tbr || 0;
+      const barW = Math.round(br / peakVbr * 80);
+      html += `<tr onclick="selectFmt('combined','${f.id}',this)">
+        <td><input type="radio" name="cfmt" value="${f.id}"></td>
+        <td>${f.id}</td>
+        <td>${f.res}</td>
+        <td><span class="codec-tag ${cls_v}">${codecLabel(f.vcodec)}</span></td>
+        <td><span class="codec-tag ${cls_a}">${codecLabel(f.acodec)}</span></td>
+        <td><span class="vbr-bar" style="width:${barW}px"></span><span class="vbr-val">${br}k</span></td>
+        <td>${f.ext}</td>
+      </tr>`;
+    });
+  }
+  html += '</table>';
+  wrap.innerHTML = html;
+}
+
+function selectFmt(type, id, tr){
+  if(type === 'video'){
+    selectedVideo = id;
+    document.querySelectorAll('input[name="vfmt"]').forEach(r => r.checked = r.value === id);
+    document.querySelectorAll('#fmtTableWrap tr').forEach(t => t.classList.remove('selected'));
+    if(tr) tr.classList.add('selected');
+  } else if(type === 'audio'){
+    selectedAudio = id;
+    document.querySelectorAll('input[name="afmt"]').forEach(r => r.checked = r.value === id);
+    document.querySelectorAll('#fmtTableWrap tr').forEach(t => t.classList.remove('selected'));
+    if(tr) tr.classList.add('selected');
+  } else {
+    selectedVideo = id; selectedAudio = null;
+    document.querySelectorAll('input[name="cfmt"]').forEach(r => r.checked = r.value === id);
+    document.querySelectorAll('#fmtTableWrap tr').forEach(t => t.classList.remove('selected'));
+    if(tr) tr.classList.add('selected');
+  }
+  updateSelectionInfo();
+}
+
+function updateSelectionInfo(){
+  const info = document.getElementById('fmtSelectionInfo');
+  if(selectedVideo && selectedAudio){
+    info.textContent = `视频: ${selectedVideo} + 音频: ${selectedAudio}`;
+    info.style.color = 'var(--green)';
+  } else if(selectedVideo && !selectedAudio && fmtData.audio.length){
+    info.textContent = `视频: ${selectedVideo}（请选择音频）`;
+    info.style.color = 'var(--yellow)';
+  } else if(selectedVideo && !selectedAudio && !fmtData.audio.length){
+    info.textContent = `已选: ${selectedVideo}`;
+    info.style.color = 'var(--green)';
+  } else {
+    info.textContent = '请先选择视频和音频格式';
+    info.style.color = 'var(--text2)';
+  }
+}
+
+function downloadSelected(){
+  const url = document.getElementById('urlInput').value.trim();
+  if(!url){ showToast('请输入链接'); return; }
+
+  let formatId = '';
+  if(selectedVideo && selectedAudio){
+    formatId = selectedVideo + '+' + selectedAudio;
+  } else if(selectedVideo){
+    // combined format or video-only (will add best audio)
+    const isCombined = fmtData.combined.some(f => f.id === selectedVideo);
+    formatId = isCombined ? selectedVideo : selectedVideo + '+bestaudio';
+  } else {
+    showToast('请先选择格式');
+    return;
+  }
+
+  doDownload(url, { format_id: formatId });
+}
+
+// ── Download ─────────────────────────────────────────────────────
+function startDownload(){
+  const url = document.getElementById('urlInput').value.trim();
+  if(!url){ showToast('请输入视频链接'); return; }
+  doDownload(url, null);
+}
+
+function doDownload(url, extra){
+  const btn = document.getElementById('dlBtn');
+  btn.disabled = true; btn.textContent = '下载中...';
+
+  const body = {
+    url,
+    type: document.getElementById('typeSelect').value,
+    quality: document.getElementById('qualitySelect').value,
+    codec: document.getElementById('codecSelect').value,
+    audio_format: document.getElementById('audioFormat').value,
+    dual_subtitle: document.getElementById('dualSubToggle').checked,
+    sub_mode: document.getElementById('subMode').value,
+    sub_order: document.getElementById('subOrder').value,
+    sub_pos: subPos,
+    margin_v: marginV,
+    sub_font: document.getElementById('subFont').value,
+    sub_size: document.getElementById('subSize').value,
+    sub_color: document.getElementById('subColor').value,
+    outline_color: document.getElementById('outlineColor').value,
+    bg_enabled: document.getElementById('bgEnabled').checked,
+    bg_color: document.getElementById('bgColor').value,
+    bg_opacity: document.getElementById('bgOpacity').value,
+    bg_radius: document.getElementById('bgRadius').value,
+    bg_width: document.getElementById('bgWidth').value,
+    bg_height: document.getElementById('bgHeight').value,
+    bg_offset_x: document.getElementById('bgOffsetX').value,
+    bg_offset_y: document.getElementById('bgOffsetY').value,
+    burn_sub: document.getElementById('burnSub').checked,
+    ae_compat: document.getElementById('aeCompat').checked,
+    translate_sub: document.getElementById('translateSub').checked,
+    api_url: document.getElementById('aiApiUrl').value,
+    api_key: document.getElementById('aiApiKey').value,
+    model: document.getElementById('aiModel').value || 'gpt-4o-mini',
+  };
+  if(extra) Object.assign(body, extra);
+
+  fetch('/api/download', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+  }).then(r => r.json()).then(data => {
+    if(data.error){ showToast(data.error); resetBtn(); return; }
+    pollProgress(data.task_id);
+  }).catch(e => { showToast('请求失败: '+e.message); resetBtn(); });
+}
+
+function resetBtn(){
+  const btn = document.getElementById('dlBtn');
+  btn.disabled = false; btn.textContent = '下载';
+}
+
+function pollProgress(taskId){
+  const box = document.getElementById('progressBox');
+  const fill = document.getElementById('progressFill');
+  const pct = document.getElementById('progressPct');
+  const msg = document.getElementById('progressMsg');
+  box.classList.add('active');
+
+  const es = new EventSource('/api/progress/'+taskId);
+  es.onmessage = function(e){
+    const d = JSON.parse(e.data);
+    if(d.error){showToast(d.error);es.close();resetBtn();return;}
+    fill.style.width = d.progress+'%';
+    pct.textContent = Math.round(d.progress)+'%';
+    msg.textContent = d.message;
+    if(d.status==='completed'){
+      es.close();resetBtn();showToast('下载完成!');loadFiles();
+      setTimeout(()=>box.classList.remove('active'),2000);
+    }else if(d.status==='error'){
+      es.close();resetBtn();showToast('下载失败: '+d.message);
+    }
+  };
+  es.onerror = function(){es.close();resetBtn()};
+}
+
+// ── Local subtitle translation ───────────────────────────────────
+let localSessionId = '';
+let localCorrections = [];
+
+async function loadLocalSubtitleCapabilities(){
+  try{
+    const res = await fetch('/api/local-subtitle/capabilities');
+    const data = await res.json();
+    if(!data.cli_available){
+      const msg = document.getElementById('localSubMsg');
+      if(msg) msg.textContent = '未检测到本地识别引擎，请确认 YiMu 工具目录存在';
+    }
+  }catch(e){}
+}
+
+function setLocalStatus(pct, message){
+  const status = document.getElementById('localSubStatus');
+  const fill = document.getElementById('localSubFill');
+  const msg = document.getElementById('localSubMsg');
+  status.style.display = '';
+  fill.style.width = Math.max(0, Math.min(100, pct || 0)) + '%';
+  msg.textContent = message || '';
+}
+
+function getLocalAiSettings(){
+  const api_url = document.getElementById('aiApiUrl').value.trim();
+  const api_key = document.getElementById('aiApiKey').value.trim();
+  const model = document.getElementById('aiModel').value.trim() || 'gpt-4o-mini';
+  if(!api_url || !api_key || !model) throw new Error('请先填写下方 AI 设置');
+  return { api_url, api_key, model, prompt: document.getElementById('localSubPrompt').value };
+}
+
+function renderLocalSession(data){
+  localSessionId = data.session_id || localSessionId;
+  const rows = data.entries || [];
+  const translated = data.translated || 0;
+  const preview = document.getElementById('localPreview');
+  document.getElementById('localSubMsg').textContent =
+    `${data.name || '本地字幕'}：${data.segments || rows.length} 条，已翻译 ${translated} 条`;
+
+  if(!rows.length){
+    preview.innerHTML = '<div class="empty">暂无字幕内容</div>';
+    return;
+  }
+  preview.innerHTML = rows.map(r => `
+    <div class="local-preview-row">
+      <div class="idx">#${r.index}</div>
+      <div class="time">${escHtml(r.start)} → ${escHtml(r.end)}</div>
+      <div class="src">${escHtml(r.source || '')}</div>
+      <div class="zh">${escHtml(r.translation || '')}</div>
+    </div>
+  `).join('');
+}
+
+async function loadLocalSession(){
+  if(!localSessionId) return;
+  const res = await fetch('/api/local-subtitle/session/' + localSessionId);
+  const data = await res.json();
+  if(data.error) throw new Error(data.error);
+  renderLocalSession(data);
+}
+
+async function pollLocalTask(taskId, done){
+  return new Promise(resolve => {
+    const timer = setInterval(async () => {
+      try{
+        const res = await fetch('/api/local-subtitle/status/' + taskId);
+        const d = await res.json();
+        if(d.error) throw new Error(d.error);
+        setLocalStatus(d.progress || 0, d.message || '处理中...');
+        if(d.status === 'completed'){
+          clearInterval(timer);
+          if(d.session_id){
+            localSessionId = d.session_id;
+            await loadLocalSession();
+          }
+          if(d.url){
+            const link = document.getElementById('localSubDownload');
+            link.href = d.url;
+            link.style.display = '';
+          }
+          if(done) done(d);
+          resolve(d);
+        }else if(d.status === 'error'){
+          clearInterval(timer);
+          showToast('本地字幕失败: ' + (d.message || d.error || '未知错误'));
+          resolve(d);
+        }
+      }catch(e){
+        clearInterval(timer);
+        showToast('本地字幕失败: ' + e.message);
+        resolve(null);
+      }
+    }, 1200);
+  });
+}
+
+async function importLocalSubtitle(){
+  const fileInput = document.getElementById('localVideoFile');
+  const file = fileInput.files && fileInput.files[0];
+  if(!file){ showToast('请选择本地视频或音频文件'); return; }
+
+  const btn = document.getElementById('localImportBtn');
+  const link = document.getElementById('localSubDownload');
+  btn.disabled = true; btn.textContent = '读取中...';
+  setLocalStatus(0, '正在读取本地文件...');
+  link.style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('language', document.getElementById('localSubLang').value);
+  fd.append('device', document.getElementById('localSubDevice').value);
+  fd.append('transcribe_model', 'large-v3');
+  fd.append('initial_prompt', document.getElementById('localSubPrompt').value);
+
+  try{
+    const res = await fetch('/api/local-subtitle/import', {method:'POST', body:fd});
+    const data = await res.json();
+    if(data.error){ throw new Error(data.error); }
+    if(data.task_id){
+      await pollLocalTask(data.task_id, () => showToast('本地字幕已读取'));
+    }else{
+      renderLocalSession(data);
+      setLocalStatus(100, `读取完成：${data.segments} 条字幕`);
+      showToast('SRT 已读取');
+    }
+  }catch(e){
+    showToast('读取失败: ' + e.message);
+  }finally{
+    btn.disabled = false; btn.textContent = '读取/分析';
+  }
+}
+
+async function mergeLocalShortSentences(){
+  if(!localSessionId){ showToast('请先读取字幕'); return; }
+  setLocalStatus(20, '正在合并短句...');
+  try{
+    const res = await fetch('/api/local-subtitle/merge', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ session_id: localSessionId })
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    renderLocalSession(data);
+    setLocalStatus(100, `合并完成：合并 ${data.merged || 0} 处短句`);
+    showToast('短句合并完成');
+  }catch(e){ showToast('合并失败: ' + e.message); }
+}
+
+async function checkLocalWords(){
+  if(!localSessionId){ showToast('请先读取字幕'); return; }
+  let cfg;
+  try{ cfg = getLocalAiSettings(); }catch(e){ showToast(e.message); return; }
+  setLocalStatus(35, '正在用在线模型检查识别词...');
+  try{
+    const res = await fetch('/api/local-subtitle/analyze', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ session_id: localSessionId, ...cfg })
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    localCorrections = data.corrections || [];
+    renderLocalSuggestions(localCorrections);
+    setLocalStatus(100, `检查完成：${localCorrections.length} 条建议`);
+    showToast('AI 检查完成');
+  }catch(e){ showToast('检查失败: ' + e.message); }
+}
+
+function renderLocalSuggestions(items){
+  const box = document.getElementById('localSuggestions');
+  if(!items.length){
+    box.style.display = '';
+    box.innerHTML = '<div class="empty">没有发现高把握识别错误</div>';
+    return;
+  }
+  box.style.display = '';
+  box.innerHTML = items.map((it, i) => `
+    <label class="local-sugg">
+      <input type="checkbox" data-local-sugg="${i}" checked>
+      <span><b>${escHtml(it.wrong || '')}</b> → <b>${escHtml(it.correct || '')}</b><span class="reason">${escHtml(it.reason || '')}</span></span>
+    </label>
+  `).join('');
+}
+
+async function applyLocalCorrections(){
+  if(!localSessionId){ showToast('请先读取字幕'); return; }
+  const selected = localCorrections.filter((_, i) => {
+    const el = document.querySelector(`[data-local-sugg="${i}"]`);
+    return el && el.checked;
+  });
+  setLocalStatus(40, '正在应用校正...');
+  try{
+    const res = await fetch('/api/local-subtitle/apply-corrections', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ session_id: localSessionId, corrections: selected })
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    renderLocalSession(data);
+    setLocalStatus(100, `已应用 ${data.applied || 0} 处校正`);
+    showToast('校正已应用');
+  }catch(e){ showToast('应用失败: ' + e.message); }
+}
+
+async function translateLocalSubtitle(){
+  if(!localSessionId){ showToast('请先读取字幕'); return; }
+  let cfg;
+  try{ cfg = getLocalAiSettings(); }catch(e){ showToast(e.message); return; }
+  setLocalStatus(0, '正在提交翻译任务...');
+  try{
+    const res = await fetch('/api/local-subtitle/translate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ session_id: localSessionId, ...cfg })
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    await pollLocalTask(data.task_id, () => showToast('翻译完成'));
+  }catch(e){ showToast('翻译失败: ' + e.message); }
+}
+
+async function exportLocalSubtitle(){
+  if(!localSessionId){ showToast('请先读取字幕'); return; }
+  setLocalStatus(90, '正在导出字幕...');
+  try{
+    const res = await fetch('/api/local-subtitle/export', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        session_id: localSessionId,
+        output_mode: document.getElementById('localSubOutput').value,
+        order: document.getElementById('localSubOrder').value
+      })
+    });
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    const link = document.getElementById('localSubDownload');
+    link.href = data.url;
+    link.style.display = '';
+    setLocalStatus(100, '字幕已导出：' + data.file);
+    showToast('字幕已导出');
+    loadFiles();
+  }catch(e){ showToast('导出失败: ' + e.message); }
+}
+
+async function startLocalSubtitle(){
+  const fileInput = document.getElementById('localVideoFile');
+  const file = fileInput.files && fileInput.files[0];
+  if(!file){ showToast('请选择本地视频或音频文件'); return; }
+  let cfg;
+  try{ cfg = getLocalAiSettings(); }catch(e){ showToast(e.message); return; }
+  const btn = document.getElementById('localOneclickBtn');
+  const link = document.getElementById('localSubDownload');
+  btn.disabled = true; btn.textContent = '一键处理中...';
+  setLocalStatus(0, '正在上传本地文件...');
+  link.style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('api_url', cfg.api_url);
+  fd.append('api_key', cfg.api_key);
+  fd.append('model', cfg.model);
+  fd.append('prompt', cfg.prompt);
+  fd.append('language', document.getElementById('localSubLang').value);
+  fd.append('device', document.getElementById('localSubDevice').value);
+  fd.append('output_mode', document.getElementById('localSubOutput').value);
+  fd.append('transcribe_model', 'large-v3');
+  fd.append('initial_prompt', cfg.prompt);
+
+  try{
+    const res = await fetch('/api/local-subtitle/start', {method:'POST', body:fd});
+    const data = await res.json();
+    if(data.error) throw new Error(data.error);
+    await pollLocalTask(data.task_id, d => {
+      if(d.url){
+        document.getElementById('localSubDownload').href = d.url;
+        document.getElementById('localSubDownload').style.display = '';
+      }
+      showToast('一键字幕已生成');
+      loadFiles();
+    });
+  }catch(e){
+    showToast('一键生成失败: ' + e.message);
+  }finally{
+    btn.disabled = false; btn.textContent = '一键生成';
+  }
+}
+
+// ── Files ────────────────────────────────────────────────────────
+async function loadFiles(){
+  const res = await fetch('/api/files');
+  const files = await res.json();
+  const list = document.getElementById('fileList');
+  const count = document.getElementById('fileCount');
+  count.textContent = files.length;
+
+  if(!files.length){ list.innerHTML = '<div class="empty">暂无文件</div>'; return; }
+
+  list.innerHTML = files.map(f => {
+    let iconType,icon;
+    if(['ass','srt','vtt'].includes(f.ext)){iconType='sub';icon='&#9998;';}
+    else if(['mp4','mkv','webm'].includes(f.ext)){iconType='video';icon='&#9654;';}
+    else if(['mp3','m4a','opus','wav'].includes(f.ext)){iconType='audio';icon='&#9835;';}
+    else{iconType='image';icon='&#9638;';}
+    return `<div class="file-item">
+      <div class="file-icon ${iconType}">${icon}</div>
+      <div class="file-info">
+        <div class="file-name">${escHtml(f.name)}</div>
+        <div class="file-meta">${f.ext.toUpperCase()} &middot; ${f.size} MB</div>
+      </div>
+      <div class="file-actions">
+        <button class="btn-sm" onclick="window.open('${f.url}')">下载</button>
+        <button class="btn-sm danger" onclick="deleteFile('${escAttr(f.name)}')">删除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteFile(name){
+  if(!confirm('确认删除 '+name+' ?'))return;
+  const res = await fetch('/api/delete/'+encodeURIComponent(name),{method:'DELETE'});
+  const data = await res.json();
+  if(data.ok){showToast('已删除');loadFiles();}
+  else showToast(data.error||'删除失败');
+}
+
+async function clearAll(){
+  if(!confirm('确认清空所有下载文件？'))return;
+  const res = await fetch('/api/clear',{method:'POST'});
+  const data = await res.json();
+  if(data.ok){showToast('已清空');loadFiles();}
+  else showToast(data.error||'清空失败');
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function escAttr(s){return s.replace(/'/g,"\\'").replace(/"/g,'\\"')}
+
+// ── Thumbnail ────────────────────────────────────────────────────────
+async function downloadThumbnail(){
+  const url = document.getElementById('urlInput').value.trim();
+  if(!url){ showToast('请输入视频链接'); return; }
+
+  const btn = document.getElementById('thumbBtn');
+  btn.disabled = true; btn.textContent = '下载中...';
+
+  try {
+    const res = await fetch('/api/thumbnail', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if(data.error){ showToast(data.error); return; }
+    showToast('封面已保存: ' + data.saved);
+    loadFiles();
+  } catch(e) {
+    showToast('封面下载失败: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '封面';
+  }
+}
+
+// ── AI Description ───────────────────────────────────────────────────
+function loadAiSettings(){
+  ['aiApiUrl','aiApiKey','aiModel'].forEach(id => {
+    const el = document.getElementById(id);
+    const saved = localStorage.getItem(id);
+    if(saved) el.value = saved;
+    el.addEventListener('change', () => localStorage.setItem(id, el.value));
+  });
+}
+
+async function fetchRefDesc(){
+  const url = document.getElementById('refUrl').value.trim();
+  if(!url){ showToast('请输入参考视频链接'); return; }
+
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '获取中...';
+
+  try {
+    const res = await fetch('/api/fetch-desc', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if(data.error){ showToast(data.error); return; }
+    let text = data.description || '（无简介）';
+    if(data.title) text = `标题: ${data.title}\n\n${text}`;
+    if(data.timeline) text += `\n\n--- 时间轴 ---\n${data.timeline}`;
+    document.getElementById('refStyleText').value = text;
+    showToast('已获取参考简介');
+  } catch(e) {
+    showToast('获取失败: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '获取';
+  }
+}
+
+let lastGeneratedFile = '';
+
+async function generateDesc(){
+  const targetUrl = document.getElementById('targetUrl').value.trim() || document.getElementById('urlInput').value.trim();
+  if(!targetUrl){ showToast('请输入目标视频链接'); return; }
+
+  const api_url = document.getElementById('aiApiUrl').value.trim();
+  const api_key = document.getElementById('aiApiKey').value.trim();
+  const model = document.getElementById('aiModel').value.trim() || 'gpt-4o-mini';
+  const style = document.getElementById('refStyleText').value.trim();
+  const include_timeline = document.getElementById('includeTimeline').checked;
+  const bilibili = document.getElementById('bilibiliFmt').checked;
+
+  if(!api_key){ showToast('请输入 API Key'); return; }
+
+  const btn = document.getElementById('genDescBtn');
+  btn.disabled = true; btn.textContent = '生成中...';
+
+  try {
+    const res = await fetch('/api/generate-desc', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url: targetUrl, style, api_url, api_key, model, include_timeline, bilibili })
+    });
+    const data = await res.json();
+    if(data.error){ showToast(data.error); return; }
+
+    document.getElementById('generatedDesc').value = data.description;
+    document.getElementById('saveDescBtn').style.display = '';
+    document.getElementById('copyDescBtn').style.display = '';
+    lastGeneratedFile = data.saved || '';
+    showToast('简介已生成');
+    loadFiles();
+  } catch(e) {
+    showToast('生成失败: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '生成';
+  }
+}
+
+function copyGeneratedDesc(){
+  const text = document.getElementById('generatedDesc').value;
+  navigator.clipboard.writeText(text).then(() => showToast('已复制到剪贴板'));
+}
+
+async function saveGeneratedDesc(){
+  if(!lastGeneratedFile){ showToast('无已生成的简介'); return; }
+  showToast('简介已保存: ' + lastGeneratedFile);
+  loadFiles();
+}
+
+loadAiSettings();
+loadFonts();
+loadLocalSubtitleCapabilities();
+document.getElementById('urlInput').addEventListener('keydown',e=>{if(e.key==='Enter')startDownload()});
+loadFiles();
+updateSubPreview();
+</script>
+</body>
+</html>
